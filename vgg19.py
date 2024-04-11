@@ -3,15 +3,16 @@ import torch
 from torchvision import models
 import numpy as np
 from networks.utils import AntiAliasInterpolation2d
+import todos
+import pdb
 
-
-class ImagePyramide(torch.nn.Module):
+class ImagePyramide(nn.Module):
     """
     Create image pyramide for computing pyramide perceptual loss. See Sec 3.3
     """
 
     def __init__(self, scales, num_channels):
-        super(ImagePyramide, self).__init__()
+        super().__init__()
         downs = {}
         for scale in scales:
             downs[str(scale).replace('.', '-')] = AntiAliasInterpolation2d(num_channels, scale)
@@ -26,7 +27,7 @@ class ImagePyramide(torch.nn.Module):
         return out_dict
 
 
-class Vgg19(torch.nn.Module):
+class Vgg19(nn.Module):
     """
     Vgg19 network for perceptual loss. See Sec 3.3.
     """
@@ -80,7 +81,7 @@ class Vgg19(torch.nn.Module):
 
 class VGGLoss(nn.Module):
     def __init__(self):
-        super(VGGLoss, self).__init__()
+        super().__init__()
 
         self.scales = [1, 0.5, 0.25, 0.125]
         self.pyramid = ImagePyramide(self.scales, 3).cuda()
@@ -88,6 +89,7 @@ class VGGLoss(nn.Module):
         # vgg loss
         self.vgg = Vgg19().cuda()
         self.weights = (10, 10, 10, 10, 10)
+        pdb.set_trace()
 
     def forward(self, img_recon, img_real):
 

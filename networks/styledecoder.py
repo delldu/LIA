@@ -3,7 +3,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 import numpy as np
-
+import todos
+import pdb
 
 def fused_leaky_relu(input, bias, negative_slope=0.2, scale=2 ** 0.5):
     return F.leaky_relu(input + bias, negative_slope) * scale
@@ -449,13 +450,11 @@ class Direction(nn.Module):
 
 
 class Synthesis(nn.Module):
-    def __init__(self, size, style_dim, motion_dim, blur_kernel=[1, 3, 3, 1], channel_multiplier=1):
-        super(Synthesis, self).__init__()
-
-        self.size = size
-        self.style_dim = style_dim
-        self.motion_dim = motion_dim
-
+    def __init__(self, size=256, style_dim=512, motion_dim=20, blur_kernel=[1, 3, 3, 1], channel_multiplier=1):
+        super().__init__()
+        # self.size = size
+        # self.style_dim = style_dim
+        # self.motion_dim = motion_dim
         self.direction = Direction(motion_dim)
 
         self.channels = {
@@ -469,13 +468,15 @@ class Synthesis(nn.Module):
             512: 32 * channel_multiplier,
             1024: 16 * channel_multiplier,
         }
+        # (Pdb) self.channels
+        # {4: 512, 8: 512, 16: 512, 32: 512, 64: 256, 128: 128, 256: 64, 512: 32, 1024: 16}
 
         self.input = ConstantInput(self.channels[4])
         self.conv1 = StyledConv(self.channels[4], self.channels[4], 3, style_dim, blur_kernel=blur_kernel)
         self.to_rgb1 = ToRGB(self.channels[4], style_dim, upsample=False)
 
-        self.log_size = int(math.log(size, 2))
-        self.num_layers = (self.log_size - 2) * 2 + 1
+        self.log_size = int(math.log(size, 2)) # 8
+        # self.num_layers = (self.log_size - 2) * 2 + 1 # 13
 
         self.convs = nn.ModuleList()
         self.upsamples = nn.ModuleList()
@@ -496,18 +497,31 @@ class Synthesis(nn.Module):
 
             in_channel = out_channel
 
-        self.n_latent = self.log_size * 2 - 2
+        self.n_latent = self.log_size * 2 - 2 ### self.log_size == 8 ===> 14
+
 
     def forward(self, wa, alpha, feats):
+        # tensor [wa] size: [1, 512], min: -1.737596, max: 1.991658, mean: 0.016901
+        # alpha is list: len = 3
+        #     tensor [item] size: [1, 20], min: -5.938756, max: 9.903283, mean: 0.361645
+        #     tensor [item] size: [1, 20], min: -5.248989, max: 4.179482, mean: -0.10482
+        #     tensor [item] size: [1, 20], min: -5.938756, max: 9.903283, mean: 0.361645
+        # feats is list: len = 6
+        #     tensor [item] size: [1, 512, 8, 8], min: -0.632862, max: 3.746052, mean: 0.007178
+        #     tensor [item] size: [1, 512, 16, 16], min: -0.963403, max: 4.332048, mean: 0.009257
+        #     tensor [item] size: [1, 512, 32, 32], min: -2.633119, max: 5.454825, mean: 0.012343
+        #     tensor [item] size: [1, 256, 64, 64], min: -5.317999, max: 8.946929, mean: 0.029414
+        #     tensor [item] size: [1, 128, 128, 128], min: -4.978227, max: 8.090096, mean: 0.048761
+        #     tensor [item] size: [1, 64, 256, 256], min: -1.285161, max: 5.145863, mean: 0.183188
 
         # wa: bs x style_dim
         # alpha: bs x style_dim
 
         bs = wa.size(0)
 
-        if alpha is not None:
+        if alpha is not None: # True
             # generating moving directions
-            if len(alpha) > 1:
+            if len(alpha) > 1: # True
                 directions_target = self.direction(alpha[0])  # target
                 directions_source = self.direction(alpha[1])  # source
                 directions_start = self.direction(alpha[2])  # start
@@ -515,18 +529,18 @@ class Synthesis(nn.Module):
             else:
                 directions = self.direction(alpha[0])
                 latent = wa + directions  # wa + directions
-        else:
+        else: # False
             latent = wa
 
-        inject_index = self.n_latent
-        latent = latent.unsqueeze(1).repeat(1, inject_index, 1)
+        inject_index = self.n_latent # 14
+        latent = latent.unsqueeze(1).repeat(1, inject_index, 1) # size() -- [1, 14, 512]
 
         out = self.input(latent)
         out = self.conv1(out, latent[:, 0])
 
         i = 1
-        for conv1, conv2, to_rgb, to_flow, feat in zip(self.convs[::2], self.convs[1::2], self.to_rgbs,
-                                                       self.to_flows, feats):
+        for conv1, conv2, to_rgb, to_flow, feat in zip(
+            self.convs[::2], self.convs[1::2], self.to_rgbs, self.to_flows, feats):
             out = conv1(out, latent[:, i])
             out = conv2(out, latent[:, i + 1])
             if out.size(2) == 8:
@@ -539,4 +553,5 @@ class Synthesis(nn.Module):
 
         img = skip
 
+        # tensor [img] size: [1, 3, 256, 256], min: -1.114883, max: 1.089666, mean: -0.541065
         return img

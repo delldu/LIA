@@ -2,7 +2,7 @@ import math
 import torch
 from torch import nn
 from torch.nn import functional as F
-
+import pdb
 
 def fused_leaky_relu(input, bias, negative_slope=0.2, scale=2 ** 0.5):
     return F.leaky_relu(input + bias, negative_slope) * scale
@@ -200,7 +200,7 @@ class ResBlock(nn.Module):
 
 class EncoderApp(nn.Module):
     def __init__(self, size, w_dim=512):
-        super(EncoderApp, self).__init__()
+        super().__init__()
 
         channels = {
             4: 512,
@@ -240,8 +240,9 @@ class EncoderApp(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, size, dim=512, dim_motion=20):
-        super(Encoder, self).__init__()
+    def __init__(self, size=256, dim=512, dim_motion=20):
+        super().__init__()
+
 
         # appearance netmork
         self.net_app = EncoderApp(size, dim)
@@ -253,6 +254,14 @@ class Encoder(nn.Module):
 
         fc.append(EqualLinear(dim, dim_motion))
         self.fc = nn.Sequential(*fc)
+        # (Pdb) self.fc
+        # Sequential(
+        #   (0): EqualLinear(512, 512)
+        #   (1): EqualLinear(512, 512)
+        #   (2): EqualLinear(512, 512)
+        #   (3): EqualLinear(512, 512)
+        #   (4): EqualLinear(512, 20)
+        # )
 
     def enc_app(self, x):
 

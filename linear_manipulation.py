@@ -38,7 +38,7 @@ def save_video(vid_gen, path, fps):
 
 class Demo(nn.Module):
     def __init__(self, args):
-        super(Demo, self).__init__()
+        super().__init__()
 
         if args.model == 'vox':
             model_path = 'checkpoints/vox.pt'

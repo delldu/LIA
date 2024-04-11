@@ -15,13 +15,12 @@ def requires_grad(net, flag=True):
 
 class Trainer(nn.Module):
     def __init__(self, args, device, rank):
-        super(Trainer, self).__init__()
+        super().__init__()
 
         self.args = args
         self.batch_size = args.batch_size
 
-        self.gen = Generator(args.size, args.latent_dim_style, args.latent_dim_motion, args.channel_multiplier).to(
-            device)
+        self.gen = Generator(args.size, args.latent_dim_style, args.latent_dim_motion, args.channel_multiplier).to(device)
         self.dis = Discriminator(args.size, args.channel_multiplier).to(device)
 
         # distributed computing

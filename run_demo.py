@@ -8,7 +8,8 @@ import os
 from PIL import Image
 from pathlib import Path
 from tqdm import tqdm
-
+import todos
+import pdb
 
 def load_image(filename, size):
     img = Image.open(filename).convert('RGB')
@@ -46,7 +47,7 @@ def save_video(vid_target_recon, save_path, fps):
 
 class Demo(nn.Module):
     def __init__(self, args):
-        super(Demo, self).__init__()
+        super().__init__()
 
         self.args = args
 
@@ -65,6 +66,7 @@ class Demo(nn.Module):
         self.gen.load_state_dict(weight)
         self.gen.eval()
 
+
         print('==> loading data')
         self.save_path = args.save_folder + '/%s' % args.model
         os.makedirs(self.save_path, exist_ok=True)
@@ -72,6 +74,8 @@ class Demo(nn.Module):
         self.img_source = img_preprocessing(args.source_path, args.size).cuda()
         self.vid_target, self.fps = vid_preprocessing(args.driving_path)
         self.vid_target = self.vid_target.cuda()
+
+        # torch.save(weight, "/tmp/a.pth") # 173M
 
     def run(self):
 
@@ -88,9 +92,9 @@ class Demo(nn.Module):
             for i in tqdm(range(self.vid_target.size(1))):
                 img_target = self.vid_target[:, i, :, :, :]
                 img_recon = self.gen(self.img_source, img_target, h_start)
-                vid_target_recon.append(img_recon.unsqueeze(2))
+                vid_target_recon.append(img_recon.unsqueeze(2)) # [1, 3, 1, 256, 256]
 
-            vid_target_recon = torch.cat(vid_target_recon, dim=2)
+            vid_target_recon = torch.cat(vid_target_recon, dim=2) # [1, 3, 221, 256, 256]
             save_video(vid_target_recon, self.save_path, self.fps)
 
 
